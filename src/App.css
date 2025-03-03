@@ -1,38 +1,195 @@
-.App {
-  text-align: center;
+/* App.css */
+:root {
+  --primary-color: #6366F1;
+  --secondary-color: #4338CA;
+  --text-color: #1F2937;
+  --light-bg: #F9FAFB;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --success-color: #10B981;
+  --warning-color: #F59E0B;
+  --danger-color: #EF4444;
 }
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.pi{
+  left: 2%;
 }
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.p-inputtext{
+  padding-left: 25px;
 }
-
-.App-header {
-  background-color: #282c34;
+.attendance-app {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text-color);
+  background-color: #F3F4F6;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+}
+
+.toolbar-custom {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+}
+
+.toolbar-custom h1 {
+  font-weight: 600;
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+.main-card {
+  border-radius: 10px;
+  box-shadow: var(--card-shadow);
+  border: none;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.main-card h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #E5E7EB;
+  padding-bottom: 0.75rem;
+}
+
+/* Stats Cards */
+.stat-card {
+  border-radius: 10px;
+  box-shadow: var(--card-shadow);
+  border: none;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s;
+  height: 100%;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.stat-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #6B7280;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.stat-icon {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  opacity: 0.8;
+}
+
+.stat-icon i {
+  font-size: 2rem;
+}
+
+.bg-green-50 .stat-icon i,
+.bg-green-50 .stat-value {
+  color: var(--success-color);
+}
+
+.bg-yellow-50 .stat-icon i,
+.bg-yellow-50 .stat-value {
+  color: var(--warning-color);
+}
+
+.bg-red-50 .stat-icon i,
+.bg-red-50 .stat-value {
+  color: var(--danger-color);
+}
+
+/* Status Badges */
+.status-badge {
+  padding: 0.5rem 0.75rem;
+  border-radius: 50px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.status-present {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success-color);
+}
+
+.status-late {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+}
+
+.status-absent {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color);
+}
+
+/* DataTable customization */
+.custom-datatable .p-datatable-header {
+  background-color: var(--light-bg);
+  border-radius: 8px 8px 0 0;
+  padding: 1rem;
+}
+
+.custom-datatable .p-datatable-thead > tr > th {
+  background-color: var(--light-bg);
+  color: #4B5563;
+  font-weight: 600;
+  padding: 1rem;
+}
+
+.table-row-custom {
+  transition: background-color 0.2s;
+}
+
+.table-row-custom:hover {
+  background-color: #F3F4F6;
+}
+
+.custom-datatable .p-paginator {
+  padding: 1rem;
+  border-radius: 0 0 8px 8px;
+}
+
+/* Detail Dialog */
+.record-details {
+  padding: 1rem 0;
+}
+
+.detail-item {
+  margin-bottom: 1rem;
+}
+
+.detail-item label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6B7280;
+  margin-bottom: 0.25rem;
+}
+
+.detail-value {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .p-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
   }
-  to {
-    transform: rotate(360deg);
+  
+  .p-toolbar-group-right {
+    margin-top: 1rem;
+    align-self: flex-end;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
   }
 }
