@@ -9,6 +9,7 @@ import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
 import { Dialog } from 'primereact/dialog';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { FilterMatchMode } from 'primereact/api';
 import * as XLSX from 'xlsx'; // For exporting to Excel
 import "primereact/resources/themes/lara-light-indigo/theme.css";
@@ -16,7 +17,7 @@ import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
 import "primeflex/primeflex.css";
 import './App.css';
-
+import { format, toZonedTime } from 'date-fns-tz';
 function App() {
   const [attendance, setAttendance] = useState([]);
   const [filteredAttendance, setFilteredAttendance] = useState([]);
@@ -43,7 +44,7 @@ function App() {
       const response = await axios.get("https://vovoureducation.com/api/attendances");
       setAttendance(response.data);
       setFilteredAttendance(response.data);
-      
+
       // Calculate dashboard stats
       const stats = {
         present: 0,
@@ -51,13 +52,13 @@ function App() {
         absent: 0,
         total: response.data.length
       };
-      
+
       response.data.forEach(record => {
         if (record.status === 'Present') stats.present++;
         else if (record.status === 'Late') stats.late++;
         else if (record.status === 'Absent') stats.absent++;
       });
-      
+
       setDashboardStats(stats);
     } catch (error) {
       console.error("Error fetching attendance:", error);
@@ -70,6 +71,28 @@ function App() {
     fetchAttendance();
   }, []);
 
+  const deleteAttendance = async (attendance) => {
+    try {
+      // Use attendance_id to delete the record
+      await axios.delete(`https://vovoureducation.com/api/attendances/${attendance.attendance_id}`);
+
+      // Update state after successful deletion
+      setAttendance(prevAttendance => prevAttendance.filter(item => item.attendance_id !== attendance.attendance_id));
+      setFilteredAttendance(prevFilteredAttendance => prevFilteredAttendance.filter(item => item.attendance_id !== attendance.attendance_id));
+    } catch (error) {
+      console.error("Error deleting attendance:", error);
+    }
+  };
+
+  const confirmDelete = (attendance) => {
+    confirmDialog({
+      message: "Are you sure you want to delete this record?",
+      header: "Delete Confirmation",
+      icon: "pi pi-exclamation-triangle",
+      accept: () => deleteAttendance(attendance)
+    });
+  };
+
   // Apply all filters whenever filter values change
   useEffect(() => {
     applyFilters();
@@ -77,38 +100,38 @@ function App() {
 
   const applyFilters = () => {
     let filtered = [...attendance];
-    
+
     // Apply global text filter
     if (globalFilterValue) {
       filtered = filtered.filter(record => {
         return Object.keys(record).some(field => {
           // Skip filtering on complex objects
           if (typeof record[field] === 'object') return false;
-          
+
           return record[field] && record[field].toString().toLowerCase().includes(globalFilterValue.toLowerCase());
         });
       });
     }
-    
+
     // Apply date filter
     if (selectedDate) {
       const filterDate = new Date(selectedDate);
       filterDate.setHours(0, 0, 0, 0);
-      
+
       filtered = filtered.filter(record => {
         const recordDate = new Date(record.date);
         recordDate.setHours(0, 0, 0, 0);
         return recordDate.getTime() === filterDate.getTime();
       });
     }
-    
+
     // Apply status filter
     if (selectedStatus) {
       filtered = filtered.filter(record => record.status === selectedStatus);
     }
-    
+
     setFilteredAttendance(filtered);
-    
+
     // Update dashboard stats based on filtered data
     updateDashboardStats(filtered);
   };
@@ -120,13 +143,13 @@ function App() {
       absent: 0,
       total: data.length
     };
-    
+
     data.forEach(record => {
       if (record.status === 'Present') stats.present++;
       else if (record.status === 'Late') stats.late++;
       else if (record.status === 'Absent') stats.absent++;
     });
-    
+
     setDashboardStats(stats);
   };
 
@@ -173,9 +196,9 @@ function App() {
       'Late': { class: 'status-late', icon: 'pi-exclamation-circle' },
       'Absent': { class: 'status-absent', icon: 'pi-times-circle' }
     };
-    
+
     const statusInfo = statusMap[record.status] || { class: '', icon: 'pi-info-circle' };
-    
+
     return (
       <span className={`status-badge ${statusInfo.class}`}>
         <i className={`pi ${statusInfo.icon} mr-2`}></i>
@@ -187,10 +210,43 @@ function App() {
   const actionBodyTemplate = (rowData) => {
     return (
       <div className="flex">
-        <Button icon="pi pi-eye" className="p-button-rounded p-button-info p-button-text mr-2" 
-          onClick={() => viewDetails(rowData)} />
-        <Button icon="pi pi-pencil" className="p-button-rounded p-button-warning p-button-text" />
+        <Button icon="pi pi-eye" className="p-button-rounded p-button-info p-button-text mr-2" onClick={() => viewDetails(rowData)} />
+        <Button icon="pi pi-trash" className="p-button-rounded p-button-danger p-button-text" onClick={() => confirmDelete(rowData)} />
       </div>
+    );
+  };
+
+
+
+  const timeBodyTemplate = (rowData, field) => {
+    const isoString = rowData[field];
+    if (!isoString) return '-';
+
+    // Parse the ISO string
+    const date = new Date(isoString);
+
+    // Extract date part (YYYY-MM-DD)
+    const datePart = date.toISOString().split('T')[0];
+
+    // Format time with AM/PM
+    let hours = date.getUTCHours();
+    const minutes = date.getUTCMinutes();
+    const seconds = date.getUTCSeconds();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+
+    // Convert to 12-hour format
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+
+    // Format with leading zeros
+    const formattedTime =
+      `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} ${ampm}`;
+
+    return (
+      <span>
+        <div>Date: {datePart}</div>
+        <div>Time: {formattedTime}</div>
+      </span>
     );
   };
 
@@ -198,20 +254,24 @@ function App() {
     const date = new Date(rowData.date);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
+  const workingHoursTemplate = (rowData) => {
+    const hours = parseFloat(rowData.working_hours);
 
-  const timeBodyTemplate = (rowData, field) => {
-    const time = rowData[field];
-    if (!time) return '-';
-    
-    const date = new Date(time);
-    return (
-      <div className="time-display">
-        <div className="date">{date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
-        <div className="time">{date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
-      </div>
-    );
+    if (isNaN(hours)) return '-';
+
+    // Convert to hours and minutes
+    const wholeHours = Math.floor(hours);
+    const minutes = Math.round((hours - wholeHours) * 60);
+
+    // Format the display
+    if (wholeHours === 0) {
+      return <span>{minutes} minutes</span>;
+    } else if (minutes === 0) {
+      return <span>{wholeHours} hour{wholeHours !== 1 ? 's' : ''}</span>;
+    } else {
+      return <span>{wholeHours} hour{wholeHours !== 1 ? 's' : ''} {minutes} minute{minutes !== 1 ? 's' : ''}</span>;
+    }
   };
-
   const viewDetails = (record) => {
     setSelectedRecord(record);
     setRecordDialog(true);
@@ -315,11 +375,11 @@ function App() {
 
       <Card className="mt-4 main-card">
         <h2><i className="pi pi-list mr-2"></i>Attendance Records</h2>
-        <DataTable 
-          value={filteredAttendance} 
-          responsiveLayout="scroll" 
-          paginator 
-          rows={10} 
+        <DataTable
+          value={filteredAttendance}
+          responsiveLayout="scroll"
+          paginator
+          rows={10}
           rowsPerPageOptions={[5, 10, 25]}
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           currentPageReportTemplate="Showing {first} to {last} of {totalRecords} records"
@@ -328,36 +388,45 @@ function App() {
           header={header}
           className="custom-datatable"
           rowClassName={() => 'table-row-custom'}
-          scrollable 
+          scrollable
           scrollHeight="400px"
         >
-          <Column field="user_id" header="User ID" sortable style={{ minWidth: '8rem' }}></Column>
+          <Column field="user_name" header="User Name" sortable style={{ minWidth: '8rem' }}></Column>
           <Column field="date" header="Date" body={dateBodyTemplate} sortable style={{ minWidth: '10rem' }}></Column>
-          <Column field="in_time" header="In Time" body={(rowData) => timeBodyTemplate(rowData, 'in_time')} sortable style={{ minWidth: '12rem' }}></Column>
-          <Column field="out_time" header="Out Time" body={(rowData) => timeBodyTemplate(rowData, 'out_time')} sortable style={{ minWidth: '12rem' }}></Column>
+          <Column field="in_time" header="In Time" body={(rowData) => timeBodyTemplate(rowData, 'in_time')} sortable style={{ minWidth: '8rem' }}></Column>
+          <Column field="out_time" header="Out Time" body={(rowData) => timeBodyTemplate(rowData, 'out_time')} sortable style={{ minWidth: '8rem' }}></Column>
+          <Column
+            field="working_hours"
+            header="Working Hours"
+            body={workingHoursTemplate}
+            sortable
+            style={{ minWidth: '10rem' }}
+          />
           <Column field="status" header="Status" body={statusBodyTemplate} sortable style={{ minWidth: '10rem' }}></Column>
           <Column body={actionBodyTemplate} exportable={false} style={{ minWidth: '8rem' }}></Column>
         </DataTable>
       </Card>
-      
-      <Dialog 
-        visible={recordDialog} 
-        style={{ width: '450px' }} 
-        header="Attendance Details" 
-        modal 
-        className="p-fluid" 
-        footer={recordDialogFooter} 
+      <ConfirmDialog />
+      <Dialog
+        visible={recordDialog}
+        style={{ width: '450px' }}
+        header="Attendance Details"
+        modal
+        className="p-fluid"
+        footer={recordDialogFooter}
         onHide={hideDialog}
       >
         {selectedRecord && (
           <div className="record-details grid">
             <div className="col-12 md:col-6 detail-item">
-              <label>User ID</label>
-              <div className="detail-value">{selectedRecord.user_id}</div>
+              <label>User Name</label>
+              <div className="detail-value">{selectedRecord.user_name}</div>
             </div>
             <div className="col-12 md:col-6 detail-item">
               <label>Date</label>
-              <div className="detail-value">{new Date(selectedRecord.date).toLocaleDateString()}</div>
+              <div className="detail-value">
+                {new Date(selectedRecord.date).toLocaleDateString()}
+              </div>
             </div>
             <div className="col-12 md:col-6 detail-item">
               <label>In Time</label>
@@ -368,12 +437,17 @@ function App() {
               <div className="detail-value">{selectedRecord.out_time || '-'}</div>
             </div>
             <div className="col-12 detail-item">
+              <label>Working Hours</label>
+              <div className="detail-value">{selectedRecord.working_hours}</div>
+            </div>
+            <div className="col-12 detail-item">
               <label>Status</label>
               <div className="detail-value">{statusBodyTemplate(selectedRecord)}</div>
             </div>
           </div>
         )}
       </Dialog>
+
     </div>
   );
 }
